@@ -18,7 +18,23 @@ let getBalance = (acc) => {
 }
 
 let source = `pragma solidity ^0.4.20;
-contract Coinflipping {
+
+contract AmountCheckable {
+  modifier minAmount(uint w) {
+    require(msg.value >= w);
+    _;
+  }
+  modifier exactlyAmount(uint w) {
+    require(msg.value == w);
+    _;
+  }
+  modifier maxAmount(uint w) {
+    require(msg.value <= w);
+    _;
+  }
+}
+
+contract Coinflipping is AmountCheckable {
   address public player1;
   address public player2;
   uint public wager;
@@ -30,29 +46,21 @@ contract Coinflipping {
     currentState = GameState.noWager;
   }
 
-  function makeWager() public payable {
+  function makeWager() minAmount(1e18) public payable {
     if (currentState == GameState.noWager) {
-      if (msg.value >= 1e18) {
-        player1 = msg.sender;
-        wager = msg.value;
-        currentState = GameState.wagerMadeByPlayer1;
-      } else {
-        msg.sender.transfer(msg.value);
-      }
+      player1 = msg.sender;
+      wager = msg.value;
+      currentState = GameState.wagerMadeByPlayer1;
     } else {
       msg.sender.transfer(msg.value);
     }
   }
 
-  function acceptWager() public payable {
+  function acceptWager() exactlyAmount(wager) public payable {
     if (currentState == GameState.wagerMadeByPlayer1) {
-      if (msg.value == wager) {
-        player2 = msg.sender;
-        currentState = GameState.wagerAccepted;
-        seedBlockNumber = block.number;
-      } else {
-        msg.sender.transfer(msg.value);
-      }
+      player2 = msg.sender;
+      currentState = GameState.wagerAccepted;
+      seedBlockNumber = block.number;
     } else {
       msg.sender.transfer(msg.value);
     }
