@@ -22,32 +22,28 @@ contract Coinflipping is AmountCheckable {
   uint public seedBlockNumber;
   enum GameState {noWager, wagerMadeByPlayer1, wagerAccepted}
   GameState public currentState;
+  modifier onlyState(GameState gs) {
+    require(currentState == gs);
+    _;
+  }
 
   function Coinflipping() public payable {
     currentState = GameState.noWager;
   }
 
-  function makeWager() minAmount(1e18) public payable {
-    if (currentState == GameState.noWager) {
-      player1 = msg.sender;
-      wager = msg.value;
-      currentState = GameState.wagerMadeByPlayer1;
-    } else {
-      msg.sender.transfer(msg.value);
-    }
+  function makeWager() onlyState(GameState.noWager) minAmount(1e18) public payable {
+    player1 = msg.sender;
+    wager = msg.value;
+    currentState = GameState.wagerMadeByPlayer1;
   }
 
-  function acceptWager() exactlyAmount(wager) public payable {
-    if (currentState == GameState.wagerMadeByPlayer1) {
-      player2 = msg.sender;
-      currentState = GameState.wagerAccepted;
-      seedBlockNumber = block.number;
-    } else {
-      msg.sender.transfer(msg.value);
-    }
+  function acceptWager() onlyState(GameState.wagerMadeByPlayer1) exactlyAmount(wager) public payable {
+    player2 = msg.sender;
+    currentState = GameState.wagerAccepted;
+    seedBlockNumber = block.number;
   }
 
-  function resolve() public {
+  function resolve() onlyState(GameState.wagerAccepted) public {
     uint256 blockValue = uint256(block.blockhash(seedBlockNumber));
     uint256 FACTOR = 57896044618658097711785492504343953926634992332820282019728792003956564819968; //2^256/2
     uint256 coinFlip = uint256(blockValue / FACTOR);
